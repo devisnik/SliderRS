@@ -16,17 +16,32 @@
 
 package de.devisnik.rs.drawer;
 
+import java.util.concurrent.TimeUnit;
+
+import android.os.Handler;
 import android.renderscript.RSSurfaceView;
 import android.renderscript.RenderScriptGL;
 
 import android.content.Context;
 import android.view.MotionEvent;
+import android.view.SurfaceHolder;
 
 public class DrawerView extends RSSurfaceView {
-    // Renderscript context
+	
+    private final class SolverRunnable implements Runnable {
+		@Override
+		public void run() {
+			if (mRender.replayNextMove())
+				mHandler.postDelayed(this, TimeUnit.MILLISECONDS.toMillis(500));
+		}
+	}
+
+	// Renderscript context
     private RenderScriptGL mRS;
     // Script that does the rendering
     private DrawerRS mRender;
+    private Handler mHandler = new Handler();
+	private SolverRunnable mSolver;
 
     public DrawerView(Context context) {
         super(context);
@@ -42,20 +57,27 @@ public class DrawerView extends RSSurfaceView {
             // Create an instance of the script that does the rendering
             mRender = new DrawerRS();
             mRender.init(mRS, getResources());
+            mSolver = new SolverRunnable();
         }
     }
-
     
+    @Override
+    public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
+    	super.surfaceChanged(holder, format, w, h);
+    	mRender.setSize(w, h);
+    }
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         ensureRenderScript();
+		mHandler.postDelayed(mSolver, TimeUnit.SECONDS.toMillis(1));
     }
 
     @Override
     protected void onDetachedFromWindow() {
         // Handle the system event and clean up
-        mRender = null;
+    	mHandler.removeCallbacks(mSolver);
+    	mRender = null;
         if (mRS != null) {
             mRS = null;
             destroyRenderScriptGL();
@@ -70,6 +92,12 @@ public class DrawerView extends RSSurfaceView {
             mRender.onActionDown((int)ev.getX(), (int)ev.getY());
             return true;
         }
+		if (action == MotionEvent.ACTION_UP) {
+			mRender.handleClick();
+			mHandler.removeCallbacks(mSolver);
+			mHandler.postDelayed(mSolver, TimeUnit.SECONDS.toMillis(1));			
+			return true;
+		}
 
         return false;
     }

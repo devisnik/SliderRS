@@ -15,11 +15,17 @@
 #pragma version(1)
 #pragma rs java_package_name(de.devisnik.rs.drawer)
 
+
 #include "rs_graphics.rsh"
 
+#pragma stateVertex(parent)
+#pragma stateStore(parent)
+
 typedef struct __attribute__((packed, aligned(4))) Tile {
-    int2 position;
-    int2 size;
+    float2 position;
+    float2 destination;
+    float2 size;
+    int steps;
     rs_allocation texture;
 } Tile_t;
 Tile_t *tiles;
@@ -37,10 +43,25 @@ void init() {
     gTouchY = 50.0f;
 }
 
-void renderTile(uint32_t index) {
+
+static void renderTile(uint32_t index) {
+	Tile_t *tile = &tiles[index];
+	if (tile->steps > 0) {
+		// (float) (Math.cos((input + 1) * Math.PI) / 2.0f) + 0.5f;
+		//-cos(angle * M_PI / 180) * RADIUS;
+		//tile->position.x += (tile->destination.x - tile->position.x) / 50.f * ((cos((tile->steps/50.f+1)*M_PI) /2.f)+.5f);
+		//tile->position.y += (tile->destination.y - tile->position.y) / 50.f * ((cos((tile->steps/50.f+1)*M_PI) /2.f)+.5f);
+		tile->position.x += (tile->destination.x - tile->position.x) / tile->steps;
+		tile->position.y += (tile->destination.y - tile->position.y) / tile->steps;
+		tile->steps--;
+	}
+//	rsDebug("steps", tile->steps);
+	rsgBindTexture(gProgramFragment, 0, tile->texture);
+	rsgDrawRect(tile->position.x, tile->position.y, tile->position.x+tile->size.x, tile->position.y+tile->size.y, 0);	
+}
+
+static void updatePosition(uint32_t index) {
 	Tile_t tile = tiles[index];
-	rsgBindTexture(gProgramFragment, 0, tile.texture);
-	rsgDrawRect(tile.position.x, tile.position.y, tile.position.x+tile.size.x, tile.position.y+tile.size.y, 0);	
 }
 
 int root() {
@@ -52,15 +73,7 @@ int root() {
 
     uint32_t dimX = rsAllocationGetDimX(rsGetAllocation(tiles));
     for (uint32_t ct=0; ct < dimX; ct++) {
-		renderTile(ct);		
-    }
-
-    tiles->position.x+= 1;
-    tiles->position.y+= 1;
-    
-    if (tiles->position.x > 400) {
-    	tiles->position.x = 0;
-    	tiles->position.y = 0;    	
+		renderTile(ct);
     }
     return 1;
 }
