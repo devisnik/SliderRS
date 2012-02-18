@@ -29,7 +29,7 @@ public class NumberPieceDrawer {
 		mPaint.setTextAlign(Align.CENTER);
 
 		mBackPaint = new Paint();
-		mBackPaint.setShader(new RadialGradient(tileSizeX / 2, tileSizeY / 2, tileSizeX / 2, 0xff111111,
+		mBackPaint.setShader(new RadialGradient(tileSizeX / 2, tileSizeY / 2, tileSizeX / 3, 0xff111111,
 				TEXT_COLOR, TileMode.MIRROR));
 
 		mBackRect = new Rect(1, 1, tileSizeX - 2, tileSizeY - 2);

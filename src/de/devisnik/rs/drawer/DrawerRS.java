@@ -34,6 +34,8 @@ import de.devisnik.sliding.Point;
 import de.devisnik.sliding.ShiftingEvent;
 
 public class DrawerRS {
+	private static final int SINGLE_SHIFT_ANIMATION_FRAMES = 30;
+	private static final int ALL_SHIFT_ANIMATION_FRAMES = 100;
 	private int mTileSizeX = 150;
 	private int mTileSizeY = 150;
 	private Resources mRes;
@@ -51,15 +53,15 @@ public class DrawerRS {
 	public void init(RenderScriptGL rs, Resources res) {
 		mRS = rs;
 		mRes = res;
-		mFrame = FrameFactory.createRobot(5, 5, new ARandom());
+		mFrame = FrameFactory.createRobot(8, 5, new ARandom());
 		mFrame.scramble();
 		initRS();
 		mFrame.addListener(new IFrameListener() {
 
 			@Override
 			public void handleSwap(IPiece left, IPiece right) {
-				updateTile(left);
-				updateTile(right);
+				updateTile(left, SINGLE_SHIFT_ANIMATION_FRAMES);
+				updateTile(right, SINGLE_SHIFT_ANIMATION_FRAMES);
 			}
 
 			@Override
@@ -143,10 +145,10 @@ public class DrawerRS {
 		else
 			mFrame.resolve();
 		for (IPiece piece : mFrame)
-			updateTile(piece);
+			updateTile(piece, ALL_SHIFT_ANIMATION_FRAMES);
 	}
 
-	private void updateTile(IPiece piece) {
+	private void updateTile(IPiece piece, int frames) {
 		Point size = mFrame.getSize();
 		Point homePosition = piece.getHomePosition();
 		int number = homePosition.y * size.x + homePosition.x;
@@ -154,7 +156,7 @@ public class DrawerRS {
 		mTiles.set_destination(number,
 				createInt2(mTileSizeX * position.x, mTileSizeY * position.y),
 				true);
-		mTiles.set_steps(number, 50, true);
+		mTiles.set_steps(number, frames, true);
 	}
 
 	private void initTiles() {
@@ -171,13 +173,15 @@ public class DrawerRS {
 	}
 
 	public void setSize(int w, int h) {
-		mTileSizeX = w / 5;
-		mTileSizeY = h / 5;
 		Point size = mFrame.getSize();
+		mTileSizeX = w / size.x;
+		mTileSizeY = h / size.y;
 		for (IPiece piece : mFrame) {
 			Point homePosition = piece.getHomePosition();
 			int number = homePosition.y * size.x + homePosition.x;
+			Point position = piece.getPosition();
 			mTiles.set_size(number, createInt2(mTileSizeX, mTileSizeY), true);
+			mTiles.set_position(number, createInt2(position.x*mTileSizeX, position.y*mTileSizeY), true);
 		}
 	}
 }

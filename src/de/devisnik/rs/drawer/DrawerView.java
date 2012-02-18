@@ -95,7 +95,7 @@ public class DrawerView extends RSSurfaceView {
 		if (action == MotionEvent.ACTION_UP) {
 			mRender.handleClick();
 			mHandler.removeCallbacks(mSolver);
-			mHandler.postDelayed(mSolver, TimeUnit.SECONDS.toMillis(1));			
+			mHandler.postDelayed(mSolver, TimeUnit.SECONDS.toMillis(3));			
 			return true;
 		}
 
