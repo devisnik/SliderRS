@@ -16,9 +16,15 @@
 #pragma rs java_package_name(de.devisnik.rs.drawer)
 
 #include "rs_graphics.rsh"
-#include "drawer.rsh"
 
+typedef struct __attribute__((packed, aligned(4))) Tile {
+    int2 position;
+    int2 size;
+    rs_allocation texture;
+} Tile_t;
 Tile_t *tiles;
+
+rs_program_fragment gProgramFragment;
 
 // gTouchX and gTouchY are variables that will be reflected for use
 // by the java API. We can use them to notify the script of touch events.
@@ -33,19 +39,16 @@ void init() {
 
 void renderTile(uint32_t index) {
 	Tile_t tile = tiles[index];
-	rsgBindProgramFragment(tile.texture);
-	rsgDrawRect(tile.position.x, tile.position.y, tile.position.x+100, tile.position.y+100, 0);	
+	rsgBindTexture(gProgramFragment, 0, tile.texture);
+	rsgDrawRect(tile.position.x, tile.position.y, tile.position.x+tile.size.x, tile.position.y+tile.size.y, 0);	
 }
 
 int root() {
 
     // Clear the background color
     rsgClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    // Tell the runtime what the font color should be
-    //rsgFontColor(1.0f, .0f, .0f, 1.0f);
-    // Introuduce ourselves to the world by drawing a greeting
-    // at the position user touched on the screen
-    //rsgDrawText("Hello World!", gTouchX, gTouchY);
+
+	rsgBindProgramFragment(gProgramFragment);
 
     uint32_t dimX = rsAllocationGetDimX(rsGetAllocation(tiles));
     for (uint32_t ct=0; ct < dimX; ct++) {

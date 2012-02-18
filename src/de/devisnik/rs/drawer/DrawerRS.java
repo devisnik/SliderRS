@@ -58,6 +58,7 @@ public class DrawerRS {
 	private void initRS() {
 		mScript = new ScriptC_drawer(mRS, mRes, R.raw.drawer);
 		initTiles();
+		mScript.set_gProgramFragment(createProgramFragment());
 		mRS.bindProgramStore(BLEND_ADD_DEPTH_NONE(mRS));
 		mRS.bindRootScript(mScript);
 	}
@@ -70,14 +71,11 @@ public class DrawerRS {
         return allocation;
     }
     
-    private ProgramFragmentFixedFunction createProgramFragmentfromImage(int id) {
-        ProgramFragmentFixedFunction.Builder texBuilder = new ProgramFragmentFixedFunction.Builder(mRS);
-        texBuilder.setTexture(ProgramFragmentFixedFunction.Builder.EnvMode.REPLACE,
-                              ProgramFragmentFixedFunction.Builder.Format.RGBA, 0);
-        ProgramFragmentFixedFunction fragment = texBuilder.create();
-        fragment.bindTexture(loadTexture(id), 0);
-        return fragment;
-    	
+    private ProgramFragmentFixedFunction createProgramFragment() {
+    	ProgramFragmentFixedFunction.Builder texBuilder = new ProgramFragmentFixedFunction.Builder(mRS);
+    	texBuilder.setTexture(ProgramFragmentFixedFunction.Builder.EnvMode.REPLACE,
+    			ProgramFragmentFixedFunction.Builder.Format.RGBA, 0);
+    	return texBuilder.create();
     }
 
     private Int2 createInt2(int x, int y) {
@@ -87,14 +85,17 @@ public class DrawerRS {
         return int2;
     }
     
+    private void initTile(ScriptField_Tile tiles, int index, int posX, int posY, int width, int height, int imageResourceId) {
+        tiles.set_position(index, createInt2(posX, posY),  true);
+        tiles.set_size(index, createInt2(width, height), true);
+        tiles.set_texture(index, loadTexture(imageResourceId), true);    	
+    }
+    
     private void initTiles() {        
         ScriptField_Tile tiles = new ScriptField_Tile(mRS, 3);
-        tiles.set_position(0, createInt2(0, 0), true);
-        tiles.set_texture(0, createProgramFragmentfromImage(R.drawable.data), true);
-        tiles.set_position(1, createInt2(300, 0), true);
-        tiles.set_texture(1, createProgramFragmentfromImage(R.drawable.leaf), true);
-        tiles.set_position(2, createInt2(600, 0), true);
-        tiles.set_texture(2, createProgramFragmentfromImage(R.drawable.torusmap), true);
+        initTile(tiles, 0, 0, 0, 100, 100, R.drawable.data);
+        initTile(tiles, 1, 300, 0, 200, 200, R.drawable.leaf);
+        initTile(tiles, 2, 600, 0, 300, 500, R.drawable.torusmap);
         mScript.bind_tiles(tiles);
     }
 }
