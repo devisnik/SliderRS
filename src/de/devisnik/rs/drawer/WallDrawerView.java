@@ -51,6 +51,8 @@ public class WallDrawerView extends RSSurfaceView {
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
     	super.surfaceChanged(holder, format, w, h);
+    	if (mRender != null)
+    		mRender.stop();
     	mRender = new WallDrawerRS(w, h);
     	mRender.init(mRS, getResources(), false);
     	mRender.start();
@@ -65,6 +67,7 @@ public class WallDrawerView extends RSSurfaceView {
     @Override
     protected void onDetachedFromWindow() {
         // Handle the system event and clean up
+    	mRender.stop();
     	mRender = null;
         if (mRS != null) {
             mRS = null;

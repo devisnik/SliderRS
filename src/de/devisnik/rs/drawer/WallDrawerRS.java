@@ -18,6 +18,7 @@ package de.devisnik.rs.drawer;
 
 import java.util.concurrent.TimeUnit;
 
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
@@ -31,6 +32,7 @@ import android.renderscript.Float2;
 import android.renderscript.ProgramFragmentFixedFunction;
 import android.renderscript.ProgramStore;
 import android.renderscript.RenderScript;
+import android.renderscript.RenderScriptGL;
 import android.renderscript.ScriptC;
 
 import com.android.wallpaper.RenderScriptScene;
@@ -56,6 +58,20 @@ public class WallDrawerRS extends RenderScriptScene {
 
 	private Handler mHandler = new Handler();
 	private SolverRunnable mSolverRunnable;
+	private IFrameListener mFrameListener = new IFrameListener() {
+
+		@Override
+		public void handleSwap(IPiece left, IPiece right) {
+			updateTile(left, SINGLE_SHIFT_ANIMATION_FRAMES);
+			updateTile(right, SINGLE_SHIFT_ANIMATION_FRAMES);
+		}
+
+		@Override
+		public void handleShifting(ShiftingEvent[] arg0) {
+			// TODO Auto-generated method stub
+
+		}
+	};
 
 	private final class SolverRunnable implements Runnable {
 		@Override
@@ -70,10 +86,26 @@ public class WallDrawerRS extends RenderScriptScene {
 	public WallDrawerRS(int width, int height) {
 		super(width, height);
 		initModel(width, height);
+		computeTileSize(width, height);
+	}
+
+	private void computeTileSize(int width, int height) {
 		Point size = mFrame.getSize();
 		mTileSizeX = width / size.x;
 		mTileSizeY = height / size.y;
 	}
+	
+	@Override
+	public void resize(int width, int height) {
+		super.resize(width, height);
+		if (mFrame != null)
+			mFrame.resolve();
+		initModel(width, height);
+		computeTileSize(width, height);
+		mTiles = initTiles();
+		((ScriptC_drawer)mScript).bind_tiles(mTiles);
+	}
+
 
 	private void initModel(int width, int height) {
 		int shorter = 4;
@@ -166,10 +198,7 @@ public class WallDrawerRS extends RenderScriptScene {
 	}
 
 	public boolean replayNextMove() {
-		boolean replayed = mFrame.replayNext();
-		// for (IPiece piece : mFrame)
-		// updateTile(piece);
-		return replayed;
+		return mFrame.replayNext();
 	}
 
 	public void handleClick() {
@@ -190,6 +219,7 @@ public class WallDrawerRS extends RenderScriptScene {
 		handleClick();
 		return super.onCommand(action, x, y, z, extras, resultRequested);
 	}
+	
 	private void updateTile(IPiece piece, int frames) {
 		Point size = mFrame.getSize();
 		Point homePosition = piece.getHomePosition();
@@ -202,22 +232,7 @@ public class WallDrawerRS extends RenderScriptScene {
 		((ScriptC_drawer) mScript).set_gSolving(mFrame.isResolved() ? 0 : 1);
 	}
 
-	private void initTiles(ScriptC_drawer script) {
-		Point size = mFrame.getSize();
-		mTiles = new ScriptField_Tile(mRS, size.x * size.y);
-		for (IPiece piece : mFrame) {
-			Point homePosition = piece.getHomePosition();
-			int number = homePosition.y * size.x + homePosition.x;
-			Point position = piece.getPosition();
-			initTile(mTiles, number, mTileSizeX * position.x, mTileSizeY
-					* position.y, mTileSizeX, mTileSizeY, createTile(piece),
-					piece instanceof IHole);
-		}
-		script.bind_tiles(mTiles);
-	}
-
-	@Override
-	protected ScriptC createScript() {
+	private ScriptField_Tile initTiles() {
 		mNumberPieceDrawer = new NumberPieceDrawer(mTileSizeX, mTileSizeY);
 		Bitmap originalImage = BitmapFactory.decodeResource(mResources,
 				R.drawable.coast);
@@ -225,25 +240,28 @@ public class WallDrawerRS extends RenderScriptScene {
 				createTargetBitmap(originalImage), new Point(mTileSizeX,
 						mTileSizeY));
 
+		Point size = mFrame.getSize();
+		ScriptField_Tile scriptField_Tile = new ScriptField_Tile(mRS, size.x * size.y);
+		for (IPiece piece : mFrame) {
+			Point homePosition = piece.getHomePosition();
+			int number = homePosition.y * size.x + homePosition.x;
+			Point position = piece.getPosition();
+			initTile(scriptField_Tile, number, mTileSizeX * position.x, mTileSizeY
+					* position.y, mTileSizeX, mTileSizeY, createTile(piece),
+					piece instanceof IHole);
+		}
+		return scriptField_Tile;
+	}
+
+	@Override
+	protected ScriptC createScript() {
+
 		ScriptC_drawer scriptC_drawer = new ScriptC_drawer(mRS, mResources,
 				R.raw.walldrawer);
 		scriptC_drawer.set_gProgramFragment(createProgramFragment());
-		initTiles(scriptC_drawer);
+		mTiles = initTiles();
+		scriptC_drawer.bind_tiles(mTiles);
 		mRS.bindProgramStore(BLEND_ADD_DEPTH_NONE(mRS));
-		mFrame.addListener(new IFrameListener() {
-
-			@Override
-			public void handleSwap(IPiece left, IPiece right) {
-				updateTile(left, SINGLE_SHIFT_ANIMATION_FRAMES);
-				updateTile(right, SINGLE_SHIFT_ANIMATION_FRAMES);
-			}
-
-			@Override
-			public void handleShifting(ShiftingEvent[] arg0) {
-				// TODO Auto-generated method stub
-
-			}
-		});
 		mSolverRunnable = new SolverRunnable();
 		return scriptC_drawer;
 	}
@@ -251,12 +269,14 @@ public class WallDrawerRS extends RenderScriptScene {
 	@Override
 	public void start() {
 		super.start();
+		mFrame.addListener(mFrameListener);
 		mHandler.postDelayed(mSolverRunnable, TimeUnit.SECONDS.toMillis(1));
 	}
 
 	@Override
 	public void stop() {
 		mHandler.removeCallbacks(mSolverRunnable);
+		mFrame.removeListener(mFrameListener);
 		super.stop();
 	}
 }
