@@ -55,22 +55,22 @@ public class DrawerView extends RSSurfaceView {
             RenderScriptGL.SurfaceConfig sc = new RenderScriptGL.SurfaceConfig();
             mRS = createRenderScriptGL(sc);
             // Create an instance of the script that does the rendering
-            mRender = new DrawerRS();
-            mRender.init(mRS, getResources());
-            mSolver = new SolverRunnable();
         }
     }
     
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
     	super.surfaceChanged(holder, format, w, h);
-    	mRender.setSize(w, h);
+    	mRender = new DrawerRS(w, h);
+    	mRender.init(mRS, getResources());
+    	mHandler.removeCallbacks(mSolver);
+    	mSolver = new SolverRunnable();
+    	mHandler.postDelayed(mSolver, TimeUnit.SECONDS.toMillis(1));
     }
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         ensureRenderScript();
-		mHandler.postDelayed(mSolver, TimeUnit.SECONDS.toMillis(1));
     }
 
     @Override

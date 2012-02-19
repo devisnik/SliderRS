@@ -26,6 +26,7 @@ typedef struct __attribute__((packed, aligned(4))) Tile {
     float2 destination;
     float2 size;
     int steps;
+    int hole;
     rs_allocation texture;
 } Tile_t;
 Tile_t *tiles;
@@ -56,6 +57,8 @@ static void renderTile(uint32_t index) {
 		tile->steps--;
 	}
 //	rsDebug("steps", tile->steps);
+	if (tile->hole)
+		return;
 	rsgBindTexture(gProgramFragment, 0, tile->texture);
 	rsgDrawRect(tile->position.x, tile->position.y, tile->position.x+tile->size.x, tile->position.y+tile->size.y, 0);	
 }

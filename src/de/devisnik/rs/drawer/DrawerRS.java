@@ -18,7 +18,11 @@ package de.devisnik.rs.drawer;
 
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.Bitmap.Config;
 import android.renderscript.Allocation;
 import android.renderscript.Float2;
 import android.renderscript.ProgramFragmentFixedFunction;
@@ -45,16 +49,63 @@ public class DrawerRS {
 	private NumberPieceDrawer mNumberPieceDrawer;
 	private IRobotFrame mFrame;
 	private ScriptField_Tile mTiles;
+	private ImagePieceDrawer mImagePieceDrawer;
+	private final int mWidth;
+	private final int mHeight;
 
-	public DrawerRS() {
-		mNumberPieceDrawer = new NumberPieceDrawer(200, 200);
+	public DrawerRS(int width, int height) {
+		mWidth = width;
+		mHeight = height;
+		int shorter = 4;
+		int longer = shorter;
+		if (width > height)
+			longer = Math.round(((float) width / height) * shorter);
+		else
+			longer = Math.round(((float) height / width) * shorter);
+		mFrame = FrameFactory.createRobot(width > height ? longer : shorter,
+				width > height ? shorter : longer, new ARandom());
+		mFrame.scramble();
+		Point size = mFrame.getSize();
+		mTileSizeX = width / size.x;
+		mTileSizeY = height / size.y;
 	}
+	
+	private Bitmap createTargetBitmap(Bitmap bitmap) {
+		if (bitmap == null)
+			return null;
+		Config bitmapConfig = bitmap.getConfig();
+		Bitmap output = Bitmap.createBitmap(mWidth, mHeight,
+				bitmapConfig == null ? Config.ARGB_8888 : bitmapConfig);
+		Canvas canvas = new Canvas(output);
+		Paint paint = new Paint();
+		Rect clipRect = computeClipRectangle(bitmap);
+		Rect targetRect = new Rect(0, 0, mWidth, mHeight);
+		paint.setAntiAlias(true);
+		// paint.setXfermode(new PorterDuffXfermode(Mode.SRC_IN));
+		canvas.drawBitmap(bitmap, clipRect, targetRect, paint);
+		return output;
+	}
+
+	private Rect computeClipRectangle(Bitmap bitmap) {
+		float targetRatio = ((float) mWidth) / mHeight;
+		Point bitmapArea = new Point(bitmap.getWidth(), bitmap.getHeight());
+		float bitmapRatio = bitmapArea.ratio();
+		Point clipArea = bitmapArea.copy();
+		if (targetRatio <= bitmapRatio)
+			clipArea.x = Math.round(targetRatio * clipArea.y);
+		else
+			clipArea.y = Math.round(clipArea.x / targetRatio);
+		Point shift = Point.diff(bitmapArea, clipArea).divideBy(2);
+		return new Rect(shift.x, shift.y, clipArea.x + shift.x, clipArea.y + shift.y);
+	}
+
 
 	public void init(RenderScriptGL rs, Resources res) {
 		mRS = rs;
 		mRes = res;
-		mFrame = FrameFactory.createRobot(8, 5, new ARandom());
-		mFrame.scramble();
+		mNumberPieceDrawer = new NumberPieceDrawer(mTileSizeX, mTileSizeY);
+		Bitmap originalImage = BitmapFactory.decodeResource(res, R.drawable.coast);
+		mImagePieceDrawer = new ImagePieceDrawer(createTargetBitmap(originalImage), new Point(mTileSizeX, mTileSizeY));
 		initRS();
 		mFrame.addListener(new IFrameListener() {
 
@@ -92,6 +143,7 @@ public class DrawerRS {
 		initTiles();
 		mScript.set_gProgramFragment(createProgramFragment());
 		mRS.bindProgramStore(BLEND_ADD_DEPTH_NONE(mRS));
+		// mRS.bindProgramStore(ProgramStore.BLEND_NONE_DEPTH_NONE(mRS));
 		mRS.bindRootScript(mScript);
 	}
 
@@ -116,19 +168,22 @@ public class DrawerRS {
 	}
 
 	private void initTile(ScriptField_Tile tiles, int index, int posX,
-			int posY, int width, int height, Bitmap bitmap) {
+			int posY, int width, int height, Bitmap bitmap, boolean isHole) {
 		tiles.set_position(index, createInt2(posX, posY), true);
 		tiles.set_destination(index, createInt2(posX, posY), true);
 		tiles.set_size(index, createInt2(width, height), true);
 		tiles.set_texture(index, loadTexture(bitmap), true);
+		tiles.set_hole(index, isHole ? 1 : 0, true);
 	}
 
 	private Bitmap createTile(IPiece piece) {
-		Bitmap bitmap = Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888);
+		Bitmap bitmap = Bitmap.createBitmap(mTileSizeX, mTileSizeY,
+				Bitmap.Config.ARGB_8888);
 		Canvas canvas = new Canvas(bitmap);
 		if (piece instanceof IHole)
 			return bitmap;
-		mNumberPieceDrawer.drawTile(piece, canvas);
+		mImagePieceDrawer.drawTile(piece, canvas, null);
+//		mNumberPieceDrawer.drawTile(piece, canvas);
 		return bitmap;
 	}
 
@@ -167,21 +222,10 @@ public class DrawerRS {
 			int number = homePosition.y * size.x + homePosition.x;
 			Point position = piece.getPosition();
 			initTile(mTiles, number, mTileSizeX * position.x, mTileSizeY
-					* position.y, mTileSizeX, mTileSizeY, createTile(piece));
+					* position.y, mTileSizeX, mTileSizeY, createTile(piece),
+					piece instanceof IHole);
 		}
 		mScript.bind_tiles(mTiles);
 	}
 
-	public void setSize(int w, int h) {
-		Point size = mFrame.getSize();
-		mTileSizeX = w / size.x;
-		mTileSizeY = h / size.y;
-		for (IPiece piece : mFrame) {
-			Point homePosition = piece.getHomePosition();
-			int number = homePosition.y * size.x + homePosition.x;
-			Point position = piece.getPosition();
-			mTiles.set_size(number, createInt2(mTileSizeX, mTileSizeY), true);
-			mTiles.set_position(number, createInt2(position.x*mTileSizeX, position.y*mTileSizeY), true);
-		}
-	}
 }

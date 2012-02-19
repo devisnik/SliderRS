@@ -10,7 +10,7 @@ import de.devisnik.sliding.IPiece;
 
 public class NumberPieceDrawer {
 
-	private static final int TEXT_COLOR = 0xff666666;
+	private static final int TEXT_COLOR = 0xff333333;
 
 	private final Paint mPaint;
 	private final Paint mBackPaint;
@@ -25,14 +25,14 @@ public class NumberPieceDrawer {
 		mPaint.setStrokeWidth(2);
 		mPaint.setStrokeCap(Paint.Cap.ROUND);
 		mPaint.setStyle(Paint.Style.FILL);
-		mPaint.setTextSize(tileSizeX / 3);
+		mPaint.setTextSize(tileSizeX / 4);
 		mPaint.setTextAlign(Align.CENTER);
 
 		mBackPaint = new Paint();
-		mBackPaint.setShader(new RadialGradient(tileSizeX / 2, tileSizeY / 2, tileSizeX / 3, 0xff111111,
-				TEXT_COLOR, TileMode.MIRROR));
+		mBackPaint.setShader(new RadialGradient(tileSizeX / 2, tileSizeY / 2,
+				tileSizeX / 2, 0xff888800, 0x00000000, TileMode.CLAMP));
 
-		mBackRect = new Rect(1, 1, tileSizeX - 2, tileSizeY - 2);
+		mBackRect = new Rect(0, 0, tileSizeX, tileSizeY);
 		mTextPosX = tileSizeX / 2f;
 		mTextPosY = (tileSizeY - mPaint.ascent() - mPaint.descent()) / 2;
 	}
