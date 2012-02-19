@@ -180,8 +180,6 @@ public class DrawerRS {
 		Bitmap bitmap = Bitmap.createBitmap(mTileSizeX, mTileSizeY,
 				Bitmap.Config.ARGB_8888);
 		Canvas canvas = new Canvas(bitmap);
-		if (piece instanceof IHole)
-			return bitmap;
 		mImagePieceDrawer.drawTile(piece, canvas, null);
 //		mNumberPieceDrawer.drawTile(piece, canvas);
 		return bitmap;
@@ -212,6 +210,7 @@ public class DrawerRS {
 				createInt2(mTileSizeX * position.x, mTileSizeY * position.y),
 				true);
 		mTiles.set_steps(number, frames, true);
+		mScript.set_gSolving(mFrame.isResolved() ? 0 : 1);
 	}
 
 	private void initTiles() {

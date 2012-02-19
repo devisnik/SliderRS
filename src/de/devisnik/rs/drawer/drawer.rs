@@ -31,6 +31,7 @@ typedef struct __attribute__((packed, aligned(4))) Tile {
 } Tile_t;
 Tile_t *tiles;
 
+int gSolving;
 rs_program_fragment gProgramFragment;
 
 // gTouchX and gTouchY are variables that will be reflected for use
@@ -57,7 +58,7 @@ static void renderTile(uint32_t index) {
 		tile->steps--;
 	}
 //	rsDebug("steps", tile->steps);
-	if (tile->hole)
+	if (tile->hole && gSolving)
 		return;
 	rsgBindTexture(gProgramFragment, 0, tile->texture);
 	rsgDrawRect(tile->position.x, tile->position.y, tile->position.x+tile->size.x, tile->position.y+tile->size.y, 0);	
