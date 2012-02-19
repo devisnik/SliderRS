@@ -3,5 +3,7 @@
 
     <string name="hello">Hello World, BitmapDrawerActivity!</string>
     <string name="app_name">BitmapDrawer</string>
-
+    <string name="author">devisnik</string>
+    <string name="description">RS sliding image tiles</string>
+    
 </resources>

@@ -34,15 +34,9 @@ Tile_t *tiles;
 int gSolving;
 rs_program_fragment gProgramFragment;
 
-// gTouchX and gTouchY are variables that will be reflected for use
-// by the java API. We can use them to notify the script of touch events.
-int gTouchX;
-int gTouchY;
 
 // This is invoked automatically when the script is created
 void init() {
-    gTouchX = 50.0f;
-    gTouchY = 50.0f;
 }
 
 
