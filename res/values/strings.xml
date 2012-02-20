@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="hello">Hello World, BitmapDrawerActivity!</string>
-    <string name="app_name">BitmapDrawer</string>
+    <string name="app_name">SliderRS</string>
     <string name="author">devisnik</string>
-    <string name="description">RS sliding image tiles</string>
-    
+    <string name="description">sliding image tiles</string>
+
 </resources>

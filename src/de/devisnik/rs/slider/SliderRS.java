@@ -198,8 +198,10 @@ public class SliderRS extends RenderScriptScene {
 		Bitmap bitmap = Bitmap.createBitmap(mTileSizeX, mTileSizeY,
 				Bitmap.Config.ARGB_8888);
 		Canvas canvas = new Canvas(bitmap);
-		mImagePieceDrawer.drawTile(piece, canvas, null);
-		// mNumberPieceDrawer.drawTile(piece, canvas);
+		if (mWidth > mHeight)
+			mImagePieceDrawer.drawTile(piece, canvas, null);
+		else
+			mNumberPieceDrawer.drawTile(piece, canvas);
 		return bitmap;
 	}
 
@@ -240,10 +242,8 @@ public class SliderRS extends RenderScriptScene {
 
 	private ScriptField_Tile initTiles() {
 		mNumberPieceDrawer = new NumberPieceDrawer(mTileSizeX, mTileSizeY);
-		int imageId = mWidth < mHeight ? R.drawable.hack_dev_camp_2012_cropped
-				: R.drawable.coast;
-		Bitmap originalImage = BitmapFactory
-				.decodeResource(mResources, imageId);
+		Bitmap originalImage = BitmapFactory.decodeResource(mResources,
+				R.drawable.coast);
 		mImagePieceDrawer = new ImagePieceDrawer(
 				createTargetBitmap(originalImage), new Point(mTileSizeX,
 						mTileSizeY));
