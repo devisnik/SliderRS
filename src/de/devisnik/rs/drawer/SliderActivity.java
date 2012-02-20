@@ -18,34 +18,29 @@ package de.devisnik.rs.drawer;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.renderscript.RSSurfaceView;
 
 // Renderscript activity
-public class DrawerActivity extends Activity {
+public class SliderActivity extends Activity {
 
     // Custom view to use with RenderScript
-    private DrawerView mView;
+    private RSSurfaceView mView;
 
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
-
-        // Create our view and set it as the content of our Activity
-        mView = new DrawerView(this);
+        mView = new SliderView(this);
         setContentView(mView);
     }
 
     @Override
     protected void onResume() {
-        // Ideally an app should implement onResume() and onPause()
-        // to take appropriate action when the activity loses focus
         super.onResume();
         mView.resume();
     }
 
     @Override
     protected void onPause() {
-        // Ideally an app should implement onResume() and onPause()
-        // to take appropriate action when the activity loses focus
         super.onPause();
         mView.pause();
     }

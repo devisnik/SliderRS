@@ -16,12 +16,11 @@
 
 package com.android.wallpaper;
 
-import android.service.wallpaper.WallpaperService;
 import android.os.Bundle;
-import android.renderscript.RenderScriptGL;
 import android.renderscript.RenderScript;
+import android.renderscript.RenderScriptGL;
+import android.service.wallpaper.WallpaperService;
 import android.view.SurfaceHolder;
-import android.view.Surface;
 
 public abstract class RenderScriptWallpaper<T extends RenderScriptScene> extends WallpaperService {
     public Engine onCreateEngine() {

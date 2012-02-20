@@ -62,16 +62,29 @@ static void updatePosition(uint32_t index) {
 	Tile_t tile = tiles[index];
 }
 
+static int frames=0;
+static int laptime = 0;
 int root() {
 
     // Clear the background color
     rsgClearColor(0.f, 0.f, 0.0f, 0.0f);
 
 	rsgBindProgramFragment(gProgramFragment);
+	
+//    rs_matrix4x4 matrix;
+//	rsMatrixRotate(&matrix, 50.f, 1.0f, 1.0f, 1.0f);
+//    rsgProgramVertexLoadModelMatrix(&matrix);	
 
     uint32_t dimX = rsAllocationGetDimX(rsGetAllocation(tiles));
     for (uint32_t ct=0; ct < dimX; ct++) {
 		renderTile(ct);
     }
-    return 1;
+    frames++;
+    int64_t now = rsUptimeMillis();
+    if (now - laptime >= 1000) {
+		rsDebug("fps:", frames);
+		frames = 0;
+	    laptime = now;
+    }
+    return 10;
 }

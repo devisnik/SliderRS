@@ -16,19 +16,29 @@
 
 package de.devisnik.rs.drawer;
 
-import android.content.res.Resources;
+import java.util.concurrent.TimeUnit;
+
 import android.graphics.Bitmap;
+import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.graphics.Bitmap.Config;
+import android.os.Bundle;
+import android.os.Handler;
 import android.renderscript.Allocation;
 import android.renderscript.Float2;
+import android.renderscript.Matrix4f;
 import android.renderscript.ProgramFragmentFixedFunction;
 import android.renderscript.ProgramStore;
+import android.renderscript.ProgramVertex;
+import android.renderscript.ProgramVertexFixedFunction;
+import android.renderscript.ProgramVertexFixedFunction.Constants;
 import android.renderscript.RenderScript;
-import android.renderscript.RenderScriptGL;
+import android.renderscript.ScriptC;
+
+import com.android.wallpaper.RenderScriptScene;
+
 import de.devisnik.sliding.FrameFactory;
 import de.devisnik.sliding.IFrameListener;
 import de.devisnik.sliding.IHole;
@@ -37,25 +47,73 @@ import de.devisnik.sliding.IRobotFrame;
 import de.devisnik.sliding.Point;
 import de.devisnik.sliding.ShiftingEvent;
 
-public class DrawerRS {
-	private static final int SINGLE_SHIFT_ANIMATION_FRAMES = 30;
-	private static final int ALL_SHIFT_ANIMATION_FRAMES = 100;
+public class SliderRS extends RenderScriptScene {
+	private static final int SINGLE_SHIFT_ANIMATION_FRAMES = 20;
+	private static final int ALL_SHIFT_ANIMATION_FRAMES = 60;
 	private int mTileSizeX = 150;
 	private int mTileSizeY = 150;
-	private Resources mRes;
-	private RenderScriptGL mRS;
 
-	private ScriptC_drawer mScript;
 	private NumberPieceDrawer mNumberPieceDrawer;
 	private IRobotFrame mFrame;
 	private ScriptField_Tile mTiles;
 	private ImagePieceDrawer mImagePieceDrawer;
-	private final int mWidth;
-	private final int mHeight;
 
-	public DrawerRS(int width, int height) {
-		mWidth = width;
-		mHeight = height;
+	private Handler mHandler = new Handler();
+	private SolverRunnable mSolverRunnable;
+	private IFrameListener mFrameListener = new IFrameListener() {
+
+		@Override
+		public void handleSwap(IPiece left, IPiece right) {
+			updateTile(left, SINGLE_SHIFT_ANIMATION_FRAMES);
+			updateTile(right, SINGLE_SHIFT_ANIMATION_FRAMES);
+		}
+
+		@Override
+		public void handleShifting(ShiftingEvent[] arg0) {
+			// TODO Auto-generated method stub
+
+		}
+	};
+	private Constants mPvOrthoAlloc;
+
+	private final class SolverRunnable implements Runnable {
+		@Override
+		public void run() {
+			if (replayNextMove())
+				mHandler.postDelayed(this, TimeUnit.MILLISECONDS.toMillis(500));
+			else
+				((ScriptC_slider) mScript).set_gSolving(0);
+		}
+	}
+
+	public SliderRS(int width, int height) {
+		super(width, height);
+		initModel(width, height);
+		computeTileSize(width, height);
+	}
+
+	private void computeTileSize(int width, int height) {
+		Point size = mFrame.getSize();
+		mTileSizeX = width / size.x;
+		mTileSizeY = height / size.y;
+	}
+
+	@Override
+	public void resize(int width, int height) {
+		super.resize(width, height);
+		Matrix4f proj = new Matrix4f();
+		proj.loadOrthoWindow(mWidth, mHeight);
+		mPvOrthoAlloc.setProjection(proj);
+
+		if (mFrame != null)
+			mFrame.resolve();
+		initModel(width, height);
+		computeTileSize(width, height);
+		mTiles = initTiles();
+		((ScriptC_slider) mScript).bind_tiles(mTiles);
+	}
+
+	private void initModel(int width, int height) {
 		int shorter = 4;
 		int longer = shorter;
 		if (width > height)
@@ -65,11 +123,8 @@ public class DrawerRS {
 		mFrame = FrameFactory.createRobot(width > height ? longer : shorter,
 				width > height ? shorter : longer, new ARandom());
 		mFrame.scramble();
-		Point size = mFrame.getSize();
-		mTileSizeX = width / size.x;
-		mTileSizeY = height / size.y;
 	}
-	
+
 	private Bitmap createTargetBitmap(Bitmap bitmap) {
 		if (bitmap == null)
 			return null;
@@ -96,34 +151,11 @@ public class DrawerRS {
 		else
 			clipArea.y = Math.round(clipArea.x / targetRatio);
 		Point shift = Point.diff(bitmapArea, clipArea).divideBy(2);
-		return new Rect(shift.x, shift.y, clipArea.x + shift.x, clipArea.y + shift.y);
+		return new Rect(shift.x, shift.y, clipArea.x + shift.x, clipArea.y
+				+ shift.y);
 	}
 
-
-	public void init(RenderScriptGL rs, Resources res) {
-		mRS = rs;
-		mRes = res;
-		mNumberPieceDrawer = new NumberPieceDrawer(mTileSizeX, mTileSizeY);
-		Bitmap originalImage = BitmapFactory.decodeResource(res, R.drawable.coast);
-		mImagePieceDrawer = new ImagePieceDrawer(createTargetBitmap(originalImage), new Point(mTileSizeX, mTileSizeY));
-		initRS();
-		mFrame.addListener(new IFrameListener() {
-
-			@Override
-			public void handleSwap(IPiece left, IPiece right) {
-				updateTile(left, SINGLE_SHIFT_ANIMATION_FRAMES);
-				updateTile(right, SINGLE_SHIFT_ANIMATION_FRAMES);
-			}
-
-			@Override
-			public void handleShifting(ShiftingEvent[] arg0) {
-				// TODO Auto-generated method stub
-
-			}
-		});
-	}
-
-	ProgramStore BLEND_ADD_DEPTH_NONE(RenderScript rs) {
+	private ProgramStore BLEND_ADD_DEPTH_NONE(RenderScript rs) {
 		ProgramStore.Builder builder = new ProgramStore.Builder(rs);
 		builder.setDepthFunc(ProgramStore.DepthFunc.ALWAYS);
 		builder.setBlendFunc(ProgramStore.BlendSrcFunc.ONE,
@@ -131,20 +163,6 @@ public class DrawerRS {
 		builder.setDitherEnabled(false);
 		builder.setDepthMaskEnabled(false);
 		return builder.create();
-	}
-
-	public void onActionDown(int x, int y) {
-		mScript.set_gTouchX(x);
-		mScript.set_gTouchY(y);
-	}
-
-	private void initRS() {
-		mScript = new ScriptC_drawer(mRS, mRes, R.raw.drawer);
-		initTiles();
-		mScript.set_gProgramFragment(createProgramFragment());
-		mRS.bindProgramStore(BLEND_ADD_DEPTH_NONE(mRS));
-		// mRS.bindProgramStore(ProgramStore.BLEND_NONE_DEPTH_NONE(mRS));
-		mRS.bindRootScript(mScript);
 	}
 
 	private Allocation loadTexture(Bitmap bitmap) {
@@ -181,15 +199,12 @@ public class DrawerRS {
 				Bitmap.Config.ARGB_8888);
 		Canvas canvas = new Canvas(bitmap);
 		mImagePieceDrawer.drawTile(piece, canvas, null);
-//		mNumberPieceDrawer.drawTile(piece, canvas);
+		// mNumberPieceDrawer.drawTile(piece, canvas);
 		return bitmap;
 	}
 
 	public boolean replayNextMove() {
-		boolean replayed = mFrame.replayNext();
-		// for (IPiece piece : mFrame)
-		// updateTile(piece);
-		return replayed;
+		return mFrame.replayNext();
 	}
 
 	public void handleClick() {
@@ -199,6 +214,16 @@ public class DrawerRS {
 			mFrame.resolve();
 		for (IPiece piece : mFrame)
 			updateTile(piece, ALL_SHIFT_ANIMATION_FRAMES);
+		mHandler.removeCallbacks(mSolverRunnable);
+		mHandler.postDelayed(mSolverRunnable, TimeUnit.SECONDS.toMillis(3));
+
+	}
+
+	@Override
+	public Bundle onCommand(String action, int x, int y, int z, Bundle extras,
+			boolean resultRequested) {
+		handleClick();
+		return super.onCommand(action, x, y, z, extras, resultRequested);
 	}
 
 	private void updateTile(IPiece piece, int frames) {
@@ -210,21 +235,68 @@ public class DrawerRS {
 				createInt2(mTileSizeX * position.x, mTileSizeY * position.y),
 				true);
 		mTiles.set_steps(number, frames, true);
-		mScript.set_gSolving(mFrame.isResolved() ? 0 : 1);
+		((ScriptC_slider) mScript).set_gSolving(mFrame.isResolved() ? 0 : 1);
 	}
 
-	private void initTiles() {
+	private ScriptField_Tile initTiles() {
+		mNumberPieceDrawer = new NumberPieceDrawer(mTileSizeX, mTileSizeY);
+		int imageId = mWidth < mHeight ? R.drawable.hack_dev_camp_2012_cropped
+				: R.drawable.coast;
+		Bitmap originalImage = BitmapFactory
+				.decodeResource(mResources, imageId);
+		mImagePieceDrawer = new ImagePieceDrawer(
+				createTargetBitmap(originalImage), new Point(mTileSizeX,
+						mTileSizeY));
+
 		Point size = mFrame.getSize();
-		mTiles = new ScriptField_Tile(mRS, size.x * size.y);
+		ScriptField_Tile scriptField_Tile = new ScriptField_Tile(mRS, size.x
+				* size.y);
 		for (IPiece piece : mFrame) {
 			Point homePosition = piece.getHomePosition();
 			int number = homePosition.y * size.x + homePosition.x;
 			Point position = piece.getPosition();
-			initTile(mTiles, number, mTileSizeX * position.x, mTileSizeY
-					* position.y, mTileSizeX, mTileSizeY, createTile(piece),
-					piece instanceof IHole);
+			initTile(scriptField_Tile, number, mTileSizeX * position.x,
+					mTileSizeY * position.y, mTileSizeX, mTileSizeY,
+					createTile(piece), piece instanceof IHole);
 		}
-		mScript.bind_tiles(mTiles);
+		return scriptField_Tile;
 	}
 
+	@Override
+	protected ScriptC createScript() {
+
+		ScriptC_slider scriptC_drawer = new ScriptC_slider(mRS, mResources,
+				R.raw.slider);
+
+		ProgramVertexFixedFunction.Builder builder = new ProgramVertexFixedFunction.Builder(
+				mRS);
+		ProgramVertex pvbo = builder.create();
+		mPvOrthoAlloc = new ProgramVertexFixedFunction.Constants(mRS);
+		((ProgramVertexFixedFunction) pvbo).bindConstants(mPvOrthoAlloc);
+		Matrix4f proj = new Matrix4f();
+		proj.loadOrthoWindow(mWidth, mHeight);
+		mPvOrthoAlloc.setProjection(proj);
+		mRS.bindProgramVertex(pvbo);
+
+		scriptC_drawer.set_gProgramFragment(createProgramFragment());
+		mTiles = initTiles();
+		scriptC_drawer.bind_tiles(mTiles);
+		mRS.bindProgramStore(BLEND_ADD_DEPTH_NONE(mRS));
+		mSolverRunnable = new SolverRunnable();
+		return scriptC_drawer;
+	}
+
+	@Override
+	public void start() {
+		super.start();
+		mFrame.addListener(mFrameListener);
+		mHandler.postDelayed(mSolverRunnable, TimeUnit.SECONDS.toMillis(1));
+	}
+
+	@Override
+	public void stop() {
+		mHandler.removeCallbacks(mSolverRunnable);
+		mFrame.removeListener(mFrameListener);
+		super.stop();
+	}
 }

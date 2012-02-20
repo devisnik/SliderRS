@@ -11,7 +11,7 @@
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name" >
         <activity
-            android:name=".WallDrawerActivity"
+            android:name=".SliderActivity"
             android:label="@string/app_name" 
             android:theme="@android:style/Theme.Black.NoTitleBar">
             <intent-filter>
@@ -23,7 +23,7 @@
         
         <service
             android:label="WallDrawer"
-            android:name="de.devisnik.rs.drawer.WallDrawerWallpaper"
+            android:name=".SliderWallpaper"
             android:permission="android.permission.BIND_WALLPAPER" >
             <intent-filter >
                 <action android:name="android.service.wallpaper.WallpaperService" />
@@ -31,7 +31,7 @@
 
             <meta-data
                 android:name="android.service.wallpaper"
-                android:resource="@xml/walldrawer" />
+                android:resource="@xml/slider" />
         </service>
         
     </application>

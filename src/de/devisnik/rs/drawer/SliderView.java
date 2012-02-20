@@ -26,24 +26,14 @@ import android.content.Context;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 
-public class DrawerView extends RSSurfaceView {
+public class SliderView extends RSSurfaceView {
 	
-    private final class SolverRunnable implements Runnable {
-		@Override
-		public void run() {
-			if (mRender.replayNextMove())
-				mHandler.postDelayed(this, TimeUnit.MILLISECONDS.toMillis(500));
-		}
-	}
-
 	// Renderscript context
     private RenderScriptGL mRS;
     // Script that does the rendering
-    private DrawerRS mRender;
-    private Handler mHandler = new Handler();
-	private SolverRunnable mSolver;
-
-    public DrawerView(Context context) {
+    private SliderRS mRender;
+	
+    public SliderView(Context context) {
         super(context);
         ensureRenderScript();
     }
@@ -61,12 +51,13 @@ public class DrawerView extends RSSurfaceView {
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
     	super.surfaceChanged(holder, format, w, h);
-    	mRender = new DrawerRS(w, h);
-    	mRender.init(mRS, getResources());
-    	mHandler.removeCallbacks(mSolver);
-    	mSolver = new SolverRunnable();
-    	mHandler.postDelayed(mSolver, TimeUnit.SECONDS.toMillis(1));
+    	if (mRender != null)
+    		mRender.stop();
+    	mRender = new SliderRS(w, h);
+    	mRender.init(mRS, getResources(), false);
+    	mRender.start();
     }
+
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
@@ -76,12 +67,13 @@ public class DrawerView extends RSSurfaceView {
     @Override
     protected void onDetachedFromWindow() {
         // Handle the system event and clean up
-    	mHandler.removeCallbacks(mSolver);
+    	mRender.stop();
     	mRender = null;
         if (mRS != null) {
             mRS = null;
             destroyRenderScriptGL();
         }
+        super.onDetachedFromWindow();
     }
 
     @Override
@@ -89,13 +81,10 @@ public class DrawerView extends RSSurfaceView {
         // Pass touch events from the system to the rendering script
         int action = ev.getAction();
 		if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
-            mRender.onActionDown((int)ev.getX(), (int)ev.getY());
             return true;
         }
 		if (action == MotionEvent.ACTION_UP) {
 			mRender.handleClick();
-			mHandler.removeCallbacks(mSolver);
-			mHandler.postDelayed(mSolver, TimeUnit.SECONDS.toMillis(3));			
 			return true;
 		}
 
