@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="de.devisnik.rs.drawer"
+    package="de.devisnik.rs.slider"
     android:versionCode="1"
     android:versionName="1.0" >
 
@@ -11,7 +11,7 @@
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name" >
         <activity
-            android:name=".SliderActivity"
+            android:name="de.devisnik.rs.slider.SliderActivity"
             android:label="@string/app_name" 
             android:theme="@android:style/Theme.Black.NoTitleBar">
             <intent-filter>
@@ -23,7 +23,7 @@
         
         <service
             android:label="WallDrawer"
-            android:name=".SliderWallpaper"
+            android:name="de.devisnik.rs.slider.SliderWallpaper"
             android:permission="android.permission.BIND_WALLPAPER" >
             <intent-filter >
                 <action android:name="android.service.wallpaper.WallpaperService" />

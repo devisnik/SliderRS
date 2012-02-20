@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package de.devisnik.rs.drawer;
+package de.devisnik.rs.slider;
 
 import java.util.concurrent.TimeUnit;
 

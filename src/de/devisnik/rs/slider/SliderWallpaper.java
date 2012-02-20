@@ -1,4 +1,4 @@
-package de.devisnik.rs.drawer;
+package de.devisnik.rs.slider;
 
 import com.android.wallpaper.RenderScriptWallpaper;
 

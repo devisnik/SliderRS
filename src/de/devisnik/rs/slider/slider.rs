@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma version(1)
-#pragma rs java_package_name(de.devisnik.rs.drawer)
+#pragma rs java_package_name(de.devisnik.rs.slider)
 
 
 #include "rs_graphics.rsh"

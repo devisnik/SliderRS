@@ -14,23 +14,17 @@
  * limitations under the License.
  */
 
-package de.devisnik.rs.drawer;
-
-import java.util.concurrent.TimeUnit;
-
-import android.os.Handler;
-import android.renderscript.RSSurfaceView;
-import android.renderscript.RenderScriptGL;
+package de.devisnik.rs.slider;
 
 import android.content.Context;
+import android.renderscript.RSSurfaceView;
+import android.renderscript.RenderScriptGL;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 
 public class SliderView extends RSSurfaceView {
 	
-	// Renderscript context
     private RenderScriptGL mRS;
-    // Script that does the rendering
     private SliderRS mRender;
 	
     public SliderView(Context context) {
@@ -40,11 +34,8 @@ public class SliderView extends RSSurfaceView {
 
     private void ensureRenderScript() {
         if (mRS == null) {
-            // Initialize renderscript with desired surface characteristics.
-            // In this case, just use the defaults
             RenderScriptGL.SurfaceConfig sc = new RenderScriptGL.SurfaceConfig();
             mRS = createRenderScriptGL(sc);
-            // Create an instance of the script that does the rendering
         }
     }
     
