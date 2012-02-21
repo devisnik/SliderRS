@@ -28,6 +28,7 @@ import de.devisnik.sliding.Point;
 import de.devisnik.sliding.ShiftingEvent;
 
 public class SliderRS extends RenderScriptScene {
+	private static final int FRAME_DIMENSION_SHORT_EDGE = 3;
 	private static final int SINGLE_SHIFT_ANIMATION_FRAMES = 20;
 	private static final int ALL_SHIFT_ANIMATION_FRAMES = 60;
 
@@ -84,15 +85,21 @@ public class SliderRS extends RenderScriptScene {
 	}
 
 	private void initModel(int width, int height) {
-		int shorter = 4;
-		int longer = shorter;
-		if (width > height)
-			longer = Math.round(((float) width / height) * shorter);
-		else
-			longer = Math.round(((float) height / width) * shorter);
+		int shorter = FRAME_DIMENSION_SHORT_EDGE;
+		int longer = computeLongerEdgeDimension(width, height, shorter);
 		mFrame = FrameFactory.createRobot(width > height ? longer : shorter,
 				width > height ? shorter : longer, new ARandom());
 		mFrame.scramble();
+	}
+
+	private int computeLongerEdgeDimension(int width, int height,
+			int shorterEdgeDimension) {
+		int longer = shorterEdgeDimension;
+		if (width > height)
+			longer = Math.round(((float) width / height) * shorterEdgeDimension);
+		else
+			longer = Math.round(((float) height / width) * shorterEdgeDimension);
+		return longer;
 	}
 
 	private ProgramStore BLEND_ADD_DEPTH_NONE(RenderScript rs) {
@@ -121,22 +128,18 @@ public class SliderRS extends RenderScriptScene {
 		return texBuilder.create();
 	}
 
-	private Float2 createInt2(int x, int y) {
-		return new Float2(x, y);
+	private Float2 createInt2(Point point) {
+		return new Float2(point.x, point.y);
 	}
 
-	private void initTile(ScriptField_Tile tiles, int index, int posX,
-			int posY, Bitmap bitmap, boolean isHole) {
+	private Item createTileItem(IPiece piece, TileImageProvider provider) {
+		Point position = piece.getPosition();
 		Item item = new ScriptField_Tile.Item();
-		item.position = createInt2(posX, posY);
-		item.destination = createInt2(posX, posY);
-		item.texture = loadTexture(bitmap);
-		item.hole = isHole ? 1 : 0;
-		tiles.set(item, index, true);
-//		tiles.set_position(index, createInt2(posX, posY), true);
-//		tiles.set_destination(index, createInt2(posX, posY), true);
-//		tiles.set_texture(index, loadTexture(bitmap), true);
-//		tiles.set_hole(index, isHole ? 1 : 0, true);
+		item.position = createInt2(position);
+		item.destination = createInt2(position);
+		item.texture = loadTexture(provider.getImage(piece));
+		item.hole = piece instanceof IHole ? 1 : 0;
+		return item;
 	}
 
 	public boolean replayNextMove() {
@@ -163,32 +166,26 @@ public class SliderRS extends RenderScriptScene {
 	}
 
 	private void updateTile(IPiece piece, int frames) {
-		Point size = mFrame.getSize();
-		Point homePosition = piece.getHomePosition();
-		int number = homePosition.y * size.x + homePosition.x;
-		Point position = piece.getPosition();
-		mTiles.set_destination(number,
-				createInt2(position.x, position.y),
-				true);
+		int number = getNumber(piece);
+		mTiles.set_destination(number, createInt2(piece.getPosition()), true);
 		mTiles.set_steps(number, frames, true);
 		((ScriptC_slider) mScript).set_gSolving(mFrame.isResolved() ? 0 : 1);
 	}
 
+	private int getNumber(IPiece piece) {
+		Point size = mFrame.getSize();
+		Point homePosition = piece.getHomePosition();
+		return homePosition.y * size.x + homePosition.x;
+	}
+
 	private ScriptField_Tile initTiles() {
 		Point size = mFrame.getSize();
-		TileImageProvider provider = new TileImageProvider(mWidth, mHeight, size.x, size.y, mWidth < mHeight, mResources);
-
-		ScriptField_Tile scriptField_Tile = new ScriptField_Tile(mRS, size.x
-				* size.y);
-		for (IPiece piece : mFrame) {
-			Point homePosition = piece.getHomePosition();
-			int number = homePosition.y * size.x + homePosition.x;
-			Point position = piece.getPosition();
-			initTile(scriptField_Tile, number, position.x,
-					position.y,
-					provider.getImage(piece), piece instanceof IHole);
-		}
-		return scriptField_Tile;
+		TileImageProvider provider = new TileImageProvider(mWidth, mHeight,
+				size.x, size.y, mWidth < mHeight, mResources);
+		ScriptField_Tile tiles = new ScriptField_Tile(mRS, size.x * size.y);
+		for (IPiece piece : mFrame)
+			tiles.set(createTileItem(piece, provider), getNumber(piece), true);
+		return tiles;
 	}
 
 	@Override

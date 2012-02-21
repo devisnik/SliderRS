@@ -74,15 +74,9 @@ static void measureFPS() {
 }
 
 int root() {
-
-    // Clear the background color
     rsgClearColor(0.f, 0.f, 0.0f, 0.0f);
 
 	rsgBindProgramFragment(gProgramFragment);
-	
-//    rs_matrix4x4 matrix;
-//	rsMatrixRotate(&matrix, 50.f, 1.0f, 1.0f, 1.0f);
-//    rsgProgramVertexLoadModelMatrix(&matrix);	
 
     uint32_t dimX = rsAllocationGetDimX(rsGetAllocation(tiles));
     for (uint32_t ct=0; ct < dimX; ct++) {
