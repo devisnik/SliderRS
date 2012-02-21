@@ -24,7 +24,6 @@
 typedef struct __attribute__((packed, aligned(4))) Tile {
     float2 position;
     float2 destination;
-    float2 size;
     int steps;
     int hole;
     rs_allocation texture;
@@ -55,7 +54,7 @@ static void renderTile(uint32_t index) {
 	if (tile->hole && gSolving)
 		return;
 	rsgBindTexture(gProgramFragment, 0, tile->texture);
-	rsgDrawRect(tile->position.x, tile->position.y, tile->position.x+tile->size.x, tile->position.y+tile->size.y, 0);	
+	rsgDrawRect(tile->position.x, tile->position.y, tile->position.x+1, tile->position.y+1, 0);	
 }
 
 static void updatePosition(uint32_t index) {
@@ -63,7 +62,17 @@ static void updatePosition(uint32_t index) {
 }
 
 static int frames=0;
-static int laptime = 0;
+static int64_t laptime = 0;
+static void measureFPS() {
+    frames++;
+    int64_t now = rsUptimeMillis();
+    if (now - laptime >= 1000) {
+		rsDebug("fps:", frames);
+		frames = 0;
+	    laptime = now;
+    }
+}
+
 int root() {
 
     // Clear the background color
@@ -79,12 +88,6 @@ int root() {
     for (uint32_t ct=0; ct < dimX; ct++) {
 		renderTile(ct);
     }
-    frames++;
-    int64_t now = rsUptimeMillis();
-    if (now - laptime >= 1000) {
-		rsDebug("fps:", frames);
-		frames = 0;
-	    laptime = now;
-    }
+    measureFPS();
     return 10;
 }

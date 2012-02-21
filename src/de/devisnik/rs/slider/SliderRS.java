@@ -1,29 +1,8 @@
-/*
- * Copyright (C) 2011 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package de.devisnik.rs.slider;
 
 import java.util.concurrent.TimeUnit;
 
 import android.graphics.Bitmap;
-import android.graphics.Bitmap.Config;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Paint;
-import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Handler;
 import android.renderscript.Allocation;
@@ -39,6 +18,7 @@ import android.renderscript.ScriptC;
 
 import com.android.wallpaper.RenderScriptScene;
 
+import de.devisnik.rs.slider.ScriptField_Tile.Item;
 import de.devisnik.sliding.FrameFactory;
 import de.devisnik.sliding.IFrameListener;
 import de.devisnik.sliding.IHole;
@@ -50,13 +30,9 @@ import de.devisnik.sliding.ShiftingEvent;
 public class SliderRS extends RenderScriptScene {
 	private static final int SINGLE_SHIFT_ANIMATION_FRAMES = 20;
 	private static final int ALL_SHIFT_ANIMATION_FRAMES = 60;
-	private int mTileSizeX = 150;
-	private int mTileSizeY = 150;
 
-	private NumberPieceDrawer mNumberPieceDrawer;
 	private IRobotFrame mFrame;
 	private ScriptField_Tile mTiles;
-	private ImagePieceDrawer mImagePieceDrawer;
 
 	private Handler mHandler = new Handler();
 	private SolverRunnable mSolverRunnable;
@@ -70,8 +46,6 @@ public class SliderRS extends RenderScriptScene {
 
 		@Override
 		public void handleShifting(ShiftingEvent[] arg0) {
-			// TODO Auto-generated method stub
-
 		}
 	};
 	private Constants mPvOrthoAlloc;
@@ -89,28 +63,24 @@ public class SliderRS extends RenderScriptScene {
 	public SliderRS(int width, int height) {
 		super(width, height);
 		initModel(width, height);
-		computeTileSize(width, height);
-	}
-
-	private void computeTileSize(int width, int height) {
-		Point size = mFrame.getSize();
-		mTileSizeX = width / size.x;
-		mTileSizeY = height / size.y;
 	}
 
 	@Override
 	public void resize(int width, int height) {
 		super.resize(width, height);
-		Matrix4f proj = new Matrix4f();
-		proj.loadOrthoWindow(mWidth, mHeight);
-		mPvOrthoAlloc.setProjection(proj);
-
+		stopReplay();
 		if (mFrame != null)
 			mFrame.resolve();
 		initModel(width, height);
-		computeTileSize(width, height);
+
+		Point size = mFrame.getSize();
+		Matrix4f proj = new Matrix4f();
+		proj.loadOrthoWindow(size.x, size.y);
+		mPvOrthoAlloc.setProjection(proj);
+
 		mTiles = initTiles();
 		((ScriptC_slider) mScript).bind_tiles(mTiles);
+		startReplay();
 	}
 
 	private void initModel(int width, int height) {
@@ -123,36 +93,6 @@ public class SliderRS extends RenderScriptScene {
 		mFrame = FrameFactory.createRobot(width > height ? longer : shorter,
 				width > height ? shorter : longer, new ARandom());
 		mFrame.scramble();
-	}
-
-	private Bitmap createTargetBitmap(Bitmap bitmap) {
-		if (bitmap == null)
-			return null;
-		Config bitmapConfig = bitmap.getConfig();
-		Bitmap output = Bitmap.createBitmap(mWidth, mHeight,
-				bitmapConfig == null ? Config.ARGB_8888 : bitmapConfig);
-		Canvas canvas = new Canvas(output);
-		Paint paint = new Paint();
-		Rect clipRect = computeClipRectangle(bitmap);
-		Rect targetRect = new Rect(0, 0, mWidth, mHeight);
-		paint.setAntiAlias(true);
-		// paint.setXfermode(new PorterDuffXfermode(Mode.SRC_IN));
-		canvas.drawBitmap(bitmap, clipRect, targetRect, paint);
-		return output;
-	}
-
-	private Rect computeClipRectangle(Bitmap bitmap) {
-		float targetRatio = ((float) mWidth) / mHeight;
-		Point bitmapArea = new Point(bitmap.getWidth(), bitmap.getHeight());
-		float bitmapRatio = bitmapArea.ratio();
-		Point clipArea = bitmapArea.copy();
-		if (targetRatio <= bitmapRatio)
-			clipArea.x = Math.round(targetRatio * clipArea.y);
-		else
-			clipArea.y = Math.round(clipArea.x / targetRatio);
-		Point shift = Point.diff(bitmapArea, clipArea).divideBy(2);
-		return new Rect(shift.x, shift.y, clipArea.x + shift.x, clipArea.y
-				+ shift.y);
 	}
 
 	private ProgramStore BLEND_ADD_DEPTH_NONE(RenderScript rs) {
@@ -186,23 +126,17 @@ public class SliderRS extends RenderScriptScene {
 	}
 
 	private void initTile(ScriptField_Tile tiles, int index, int posX,
-			int posY, int width, int height, Bitmap bitmap, boolean isHole) {
-		tiles.set_position(index, createInt2(posX, posY), true);
-		tiles.set_destination(index, createInt2(posX, posY), true);
-		tiles.set_size(index, createInt2(width, height), true);
-		tiles.set_texture(index, loadTexture(bitmap), true);
-		tiles.set_hole(index, isHole ? 1 : 0, true);
-	}
-
-	private Bitmap createTile(IPiece piece) {
-		Bitmap bitmap = Bitmap.createBitmap(mTileSizeX, mTileSizeY,
-				Bitmap.Config.ARGB_8888);
-		Canvas canvas = new Canvas(bitmap);
-		if (mWidth > mHeight)
-			mImagePieceDrawer.drawTile(piece, canvas, null);
-		else
-			mNumberPieceDrawer.drawTile(piece, canvas);
-		return bitmap;
+			int posY, Bitmap bitmap, boolean isHole) {
+		Item item = new ScriptField_Tile.Item();
+		item.position = createInt2(posX, posY);
+		item.destination = createInt2(posX, posY);
+		item.texture = loadTexture(bitmap);
+		item.hole = isHole ? 1 : 0;
+		tiles.set(item, index, true);
+//		tiles.set_position(index, createInt2(posX, posY), true);
+//		tiles.set_destination(index, createInt2(posX, posY), true);
+//		tiles.set_texture(index, loadTexture(bitmap), true);
+//		tiles.set_hole(index, isHole ? 1 : 0, true);
 	}
 
 	public boolean replayNextMove() {
@@ -234,30 +168,25 @@ public class SliderRS extends RenderScriptScene {
 		int number = homePosition.y * size.x + homePosition.x;
 		Point position = piece.getPosition();
 		mTiles.set_destination(number,
-				createInt2(mTileSizeX * position.x, mTileSizeY * position.y),
+				createInt2(position.x, position.y),
 				true);
 		mTiles.set_steps(number, frames, true);
 		((ScriptC_slider) mScript).set_gSolving(mFrame.isResolved() ? 0 : 1);
 	}
 
 	private ScriptField_Tile initTiles() {
-		mNumberPieceDrawer = new NumberPieceDrawer(mTileSizeX, mTileSizeY);
-		Bitmap originalImage = BitmapFactory.decodeResource(mResources,
-				R.drawable.coast);
-		mImagePieceDrawer = new ImagePieceDrawer(
-				createTargetBitmap(originalImage), new Point(mTileSizeX,
-						mTileSizeY));
-
 		Point size = mFrame.getSize();
+		TileImageProvider provider = new TileImageProvider(mWidth, mHeight, size.x, size.y, mWidth < mHeight, mResources);
+
 		ScriptField_Tile scriptField_Tile = new ScriptField_Tile(mRS, size.x
 				* size.y);
 		for (IPiece piece : mFrame) {
 			Point homePosition = piece.getHomePosition();
 			int number = homePosition.y * size.x + homePosition.x;
 			Point position = piece.getPosition();
-			initTile(scriptField_Tile, number, mTileSizeX * position.x,
-					mTileSizeY * position.y, mTileSizeX, mTileSizeY,
-					createTile(piece), piece instanceof IHole);
+			initTile(scriptField_Tile, number, position.x,
+					position.y,
+					provider.getImage(piece), piece instanceof IHole);
 		}
 		return scriptField_Tile;
 	}
@@ -274,7 +203,8 @@ public class SliderRS extends RenderScriptScene {
 		mPvOrthoAlloc = new ProgramVertexFixedFunction.Constants(mRS);
 		((ProgramVertexFixedFunction) pvbo).bindConstants(mPvOrthoAlloc);
 		Matrix4f proj = new Matrix4f();
-		proj.loadOrthoWindow(mWidth, mHeight);
+		Point size = mFrame.getSize();
+		proj.loadOrthoWindow(size.x, size.y);
 		mPvOrthoAlloc.setProjection(proj);
 		mRS.bindProgramVertex(pvbo);
 
@@ -289,14 +219,22 @@ public class SliderRS extends RenderScriptScene {
 	@Override
 	public void start() {
 		super.start();
+		startReplay();
+	}
+
+	private void startReplay() {
 		mFrame.addListener(mFrameListener);
 		mHandler.postDelayed(mSolverRunnable, TimeUnit.SECONDS.toMillis(1));
 	}
 
 	@Override
 	public void stop() {
+		stopReplay();
+		super.stop();
+	}
+
+	private void stopReplay() {
 		mHandler.removeCallbacks(mSolverRunnable);
 		mFrame.removeListener(mFrameListener);
-		super.stop();
 	}
 }
