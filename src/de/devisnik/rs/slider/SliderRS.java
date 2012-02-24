@@ -10,7 +10,6 @@ import android.renderscript.Float2;
 import android.renderscript.Matrix4f;
 import android.renderscript.ProgramFragmentFixedFunction;
 import android.renderscript.ProgramStore;
-import android.renderscript.ProgramVertex;
 import android.renderscript.ProgramVertexFixedFunction;
 import android.renderscript.ProgramVertexFixedFunction.Constants;
 import android.renderscript.RenderScript;
@@ -75,12 +74,14 @@ public class SliderRS extends RenderScriptScene {
 		initModel(width, height);
 
 		Point size = mFrame.getSize();
+
 		Matrix4f proj = new Matrix4f();
 		proj.loadOrthoWindow(size.x, size.y);
 		mPvOrthoAlloc.setProjection(proj);
 
 		mTiles = initTiles();
 		((ScriptC_slider) mScript).bind_tiles(mTiles);
+		((ScriptC_slider) mScript).set_gSize(new Float2(size.x, size.y));
 		startReplay();
 	}
 
@@ -96,9 +97,11 @@ public class SliderRS extends RenderScriptScene {
 			int shorterEdgeDimension) {
 		int longer = shorterEdgeDimension;
 		if (width > height)
-			longer = Math.round(((float) width / height) * shorterEdgeDimension);
+			longer = Math
+					.round(((float) width / height) * shorterEdgeDimension);
 		else
-			longer = Math.round(((float) height / width) * shorterEdgeDimension);
+			longer = Math
+					.round(((float) height / width) * shorterEdgeDimension);
 		return longer;
 	}
 
@@ -129,7 +132,9 @@ public class SliderRS extends RenderScriptScene {
 	}
 
 	private Float2 createInt2(Point point) {
-		return new Float2(point.x, point.y);
+		Point size = mFrame.getSize();
+		Float2 fsize = new Float2(size.x, size.y);
+		return new Float2(point.x - fsize.x / 2, point.y - fsize.y / 2);
 	}
 
 	private Item createTileItem(IPiece piece, TileImageProvider provider) {
@@ -196,19 +201,22 @@ public class SliderRS extends RenderScriptScene {
 
 		ProgramVertexFixedFunction.Builder builder = new ProgramVertexFixedFunction.Builder(
 				mRS);
-		ProgramVertex pvbo = builder.create();
-		mPvOrthoAlloc = new ProgramVertexFixedFunction.Constants(mRS);
-		((ProgramVertexFixedFunction) pvbo).bindConstants(mPvOrthoAlloc);
-		Matrix4f proj = new Matrix4f();
+		ProgramVertexFixedFunction programVertex = builder.create();
 		Point size = mFrame.getSize();
-		proj.loadOrthoWindow(size.x, size.y);
+		mPvOrthoAlloc = new ProgramVertexFixedFunction.Constants(mRS);
+		((ProgramVertexFixedFunction) programVertex)
+				.bindConstants(mPvOrthoAlloc);
+		Matrix4f proj = new Matrix4f();
+		proj.loadOrtho(0, size.x, size.y, 0, -10f, 10f);
 		mPvOrthoAlloc.setProjection(proj);
-		mRS.bindProgramVertex(pvbo);
+		mRS.bindProgramVertex(programVertex);
 
 		scriptC_drawer.set_gProgramFragment(createProgramFragment());
 		mTiles = initTiles();
 		scriptC_drawer.bind_tiles(mTiles);
 		mRS.bindProgramStore(BLEND_ADD_DEPTH_NONE(mRS));
+
+		scriptC_drawer.set_gSize(new Float2(size.x, size.y));
 		mSolverRunnable = new SolverRunnable();
 		return scriptC_drawer;
 	}
