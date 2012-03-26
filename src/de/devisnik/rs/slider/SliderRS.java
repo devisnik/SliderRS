@@ -172,9 +172,10 @@ public class SliderRS extends RenderScriptScene {
 
 	private void updateTile(IPiece piece, int frames) {
 		int number = getNumber(piece);
-		mTiles.set_destination(number, createInt2(piece.getPosition()), true);
-		mTiles.set_steps(number, frames, true);
-		((ScriptC_slider) mScript).set_gSolving(mFrame.isResolved() ? 0 : 1);
+		Float2 point = createInt2(piece.getPosition());
+		ScriptC_slider script = (ScriptC_slider)mScript;
+		script.invoke_setDestination(number, point, frames);
+		script.set_gSolving(mFrame.isResolved() ? 0 : 1);
 	}
 
 	private int getNumber(IPiece piece) {
@@ -196,7 +197,7 @@ public class SliderRS extends RenderScriptScene {
 	@Override
 	protected ScriptC createScript() {
 
-		ScriptC_slider scriptC_drawer = new ScriptC_slider(mRS, mResources,
+		ScriptC_slider script_slider = new ScriptC_slider(mRS, mResources,
 				R.raw.slider);
 
 		ProgramVertexFixedFunction.Builder builder = new ProgramVertexFixedFunction.Builder(
@@ -211,14 +212,14 @@ public class SliderRS extends RenderScriptScene {
 		mPvOrthoAlloc.setProjection(proj);
 		mRS.bindProgramVertex(programVertex);
 
-		scriptC_drawer.set_gProgramFragment(createProgramFragment());
+		script_slider.set_gProgramFragment(createProgramFragment());
 		mTiles = initTiles();
-		scriptC_drawer.bind_tiles(mTiles);
+		script_slider.bind_tiles(mTiles);
 		mRS.bindProgramStore(BLEND_ADD_DEPTH_NONE(mRS));
 
-		scriptC_drawer.set_gSize(new Float2(size.x, size.y));
+		script_slider.set_gSize(new Float2(size.x, size.y));
 		mSolverRunnable = new SolverRunnable();
-		return scriptC_drawer;
+		return script_slider;
 	}
 
 	@Override

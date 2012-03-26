@@ -38,12 +38,20 @@ rs_program_fragment gProgramFragment;
 void init() {
 }
 
+void setDestination(int index, float2 value, int steps) {
+	Tile_t *tile = &tiles[index];
+	tile->destination.x = value.x;
+	tile->destination.y = value.y;
+	tile->steps = steps;
+}
 
 static void renderTile(uint32_t index) {
 	Tile_t *tile = &tiles[index];
 	if (tile->steps > 0) {
 		// (float) (Math.cos((input + 1) * Math.PI) / 2.0f) + 0.5f;
 		//-cos(angle * M_PI / 180) * RADIUS;
+		// rsDebug("position:", tile->position);
+		// rsDebug("target: ", tile->destination);
 		//tile->position.x += (tile->destination.x - tile->position.x) / 50.f * ((cos((tile->steps/50.f+1)*M_PI) /2.f)+.5f);
 		//tile->position.y += (tile->destination.y - tile->position.y) / 50.f * ((cos((tile->steps/50.f+1)*M_PI) /2.f)+.5f);
 		tile->position.x += (tile->destination.x - tile->position.x) / tile->steps;
