@@ -101,7 +101,7 @@ int root() {
     rsMatrixLoadFrustum(&proj, -diameter.x, diameter.x, diameter.y, -diameter.y,  1.f, 10.0f); 
     
     // rotate the puzzle around the y-axis
-	rot += 0.25f;
+	rot += 0.001f * (1 + 5000*fabs(sin(radians(rot))));
 	if (rot >= 360.f)
 		rot = 0.f;
     rs_matrix4x4 matrix;
@@ -122,5 +122,5 @@ int root() {
 		renderTile(ct);
     }
     measureFPS();
-    return 10;
+    return 1;
 }
