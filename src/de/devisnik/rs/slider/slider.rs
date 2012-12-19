@@ -122,5 +122,5 @@ int root() {
 		renderTile(ct);
     }
     measureFPS();
-    return 1;
+    return 10;
 }
